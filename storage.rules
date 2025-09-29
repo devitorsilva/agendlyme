@@ -1,0 +1,36 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    // Allow authenticated users to upload profile photos
+    match /users/{userId}/profile/{allPaths=**} {
+      allow read: if true;
+      allow write: if request.auth != null 
+                   && request.auth.uid == userId
+                   && request.resource.size < 5 * 1024 * 1024 // 5MB limit
+                   && request.resource.contentType.matches('image/.*');
+    }
+    
+    // Allow salon owners and staff to upload salon media
+    match /salons/{salonId}/media/{allPaths=**} {
+      allow read: if true;
+      allow write: if request.auth != null 
+                   && (salonId in request.auth.token.salonIds)
+                   && request.resource.size < 10 * 1024 * 1024 // 10MB limit
+                   && request.resource.contentType.matches('image/.*');
+    }
+    
+    // Allow salon owners to upload service images
+    match /salons/{salonId}/services/{serviceId}/{allPaths=**} {
+      allow read: if true;
+      allow write: if request.auth != null 
+                   && (salonId in request.auth.token.salonIds)
+                   && request.resource.size < 5 * 1024 * 1024 // 5MB limit
+                   && request.resource.contentType.matches('image/.*');
+    }
+    
+    // Default deny rule
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}
